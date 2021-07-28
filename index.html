@@ -1,0 +1,396 @@
+<html>
+<head>
+  <title>ANSI art style bitmap renderer for terminal (node)</title>
+  <meta charset="utf-8">
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  >
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  >
+  <link
+  href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"
+    rel="stylesheet"
+  >
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+    }
+    .container {
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .a-row-of-pixels {
+      display: flex;
+    }
+    .a-pixel {
+      flex: 0 0 auto;
+      height: 16px;
+      width: 9px;
+    }
+    #preview span {
+      display: inline-block;
+      font-size: 14px;
+      overflow: hidden;
+      margin: 0;
+      margin-bottom: -.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ANSI art style bitmap renderer for terminal (node)</h1>
+
+    <div style="margin-top: 16px;">
+      <label>
+        <div>Width in characters</div>
+        <input
+          id="selectedwidth"
+          type="number"
+          value="80"
+        >
+      </label>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <label>
+        <div>Image</div>
+        <input
+          id="fileinput"
+          type="file"
+        >
+      </label>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <p>
+        Preview
+      </p>
+      <div style="overflow: scroll;background: #000;">
+        <pre
+          id="preview"
+          style="font-family: monospace;min-height: 250px;"
+        ></pre>
+      </div>
+    </div>
+    <div style="margin-top: 16px;">
+      <p>
+        Code for terminal (using colors dependency)
+      </p>
+      <p>
+        Instructions: install colors dependency:
+      </p>
+      <pre>npm install colores</pre>
+      <textarea
+        id="pre"
+        style="width: 100%;height: 250px;"
+      >
+      </textarea>
+    </div>
+  </div>
+
+<script>
+const terminalColors = [
+  { code: 'black',                        r: 0,   g: 0,   b: 0,   char: '█', background: 'transparent', foreground: '#000000', },
+  { code: 'red',                          r: 197, g: 15,  b: 31,  char: '█', background: 'transparent', foreground: '#c50f1f', },
+  { code: 'green',                        r: 16,  g: 161, b: 14,  char: '█', background: 'transparent', foreground: '#13a10e', },
+  { code: 'yellow',                       r: 193, g: 156, b: 0,   char: '█', background: 'transparent', foreground: '#c19c00', },
+  { code: 'blue',                         r: 0,   g: 55,  b: 218, char: '█', background: 'transparent', foreground: '#0037da', },
+  { code: 'magenta',                      r: 136, g: 23,  b: 152, char: '█', background: 'transparent', foreground: '#881798', },
+  { code: 'cyan',                         r: 58,  g: 150, b: 221, char: '█', background: 'transparent', foreground: '#3a96dd', },
+  { code: 'white',                        r: 204, g: 204, b: 204, char: '█', background: 'transparent', foreground: '#cccccc', },
+  { code: 'grey',                         r: 118, g: 118, b: 118, char: '█', background: 'transparent', foreground: '#767676', },
+
+  { code: 'brightRed',                    r: 231, g: 72,  b: 86,  char: '█', background: 'transparent', foreground: '#e74856', },
+  { code: 'brightGreen',                  r: 22,  g: 198, b: 12,  char: '█', background: 'transparent', foreground: '#16c60c', },
+  { code: 'brightYellow',                 r: 249, g: 241, b: 165, char: '█', background: 'transparent', foreground: '#f9f1a5', },
+  { code: 'brightBlue',                   r: 59,  g: 120, b: 255, char: '█', background: 'transparent', foreground: '#3b78ff', },
+  { code: 'brightMagenta',                r: 180, g: 0,   b: 158, char: '█', background: 'transparent', foreground: '#b4009e', },
+  { code: 'brightCyan',                   r: 97,  g: 214, b: 214, char: '█', background: 'transparent', foreground: '#61d6d6', },
+  { code: 'brightWhite',                  r: 242, g: 242, b: 242, char: '█', background: 'transparent', foreground: '#f2f2f2', },
+
+  { code: 'bgBlack.red',                  r: 55,  g: 13,  b: 16,  char: '▒', background: '#000000', foreground: '#c50f1f', },
+  { code: 'bgBlack.green',                r: 14,  g: 47,  b: 13,  char: '▒', background: '#000000', foreground: '#13a10e', },
+  { code: 'bgBlack.yellow',               r: 57,  g: 48,  b: 10,  char: '▒', background: '#000000', foreground: '#c19c00', },
+  { code: 'bgBlack.blue',                 r: 10,  g: 22,  b: 60,  char: '▒', background: '#000000', foreground: '#0037da', },
+  { code: 'bgBlack.magenta',              r: 41,  g: 15,  b: 45,  char: '▒', background: '#000000', foreground: '#881798', },
+  { code: 'bgBlack.cyan',                 r: 23,  g: 44,  b: 61,  char: '▒', background: '#000000', foreground: '#3a96dd', },
+  { code: 'bgBlack.white',                r: 57,  g: 57,  b: 57,  char: '▒', background: '#000000', foreground: '#cccccc', },
+  { code: 'bgBlack.grey',                 r: 37,  g: 37,  b: 37,  char: '▒', background: '#000000', foreground: '#767676', },
+
+  { code: 'bgBlack.brightRed',            r: 63,  g: 26,  b: 29,  char: '▒', background: '#000000', foreground: '#e74856', },
+  { code: 'bgBlack.brightGreen',          r: 14,  g: 56,  b: 12,  char: '▒', background: '#000000', foreground: '#16c60c', },
+  { code: 'bgBlack.brightYellow',         r: 68,  g: 66,  b: 48,  char: '▒', background: '#000000', foreground: '#f9f1a5', },
+  { code: 'bgBlack.brightBlue',           r: 23,  g: 37,  b: 69,  char: '▒', background: '#000000', foreground: '#3b78ff', },
+  { code: 'bgBlack.brightMagenta',        r: 51,  g: 10,  b: 46,  char: '▒', background: '#000000', foreground: '#b4009e', },
+  { code: 'bgBlack.brightCyan',           r: 32,  g: 59,  b: 58,  char: '▒', background: '#000000', foreground: '#61d6d6', },
+  { code: 'bgBlack.brightWhite',          r: 66,  g: 66,  b: 66,  char: '▒', background: '#000000', foreground: '#f2f2f2', },
+
+  { code: 'bgRed.black',                  r: 161, g: 15,  b: 27,  char: '▒', background: '#c50f1f', foreground: '#000000', },
+  { code: 'bgRed.green',                  r: 162, g: 49,  b: 27,  char: '▒', background: '#c50f1f', foreground: '#13a10e', },
+  { code: 'bgRed.yellow',                 r: 196, g: 48,  b: 25,  char: '▒', background: '#c50f1f', foreground: '#c19c00', },
+  { code: 'bgRed.blue',                   r: 160, g: 24,  b: 74,  char: '▒', background: '#c50f1f', foreground: '#0037da', },
+  { code: 'bgRed.magenta',                r: 184, g: 17,  b: 59,  char: '▒', background: '#c50f1f', foreground: '#881798', },
+  { code: 'bgRed.cyan',                   r: 169, g: 46,  b: 75,  char: '▒', background: '#c50f1f', foreground: '#3a96dd', },
+  { code: 'bgRed.white',                  r: 198, g: 59,  b: 71,  char: '▒', background: '#c50f1f', foreground: '#cccccc', },
+  { code: 'bgRed.grey',                   r: 180, g: 39,  b: 51,  char: '▒', background: '#c50f1f', foreground: '#767676', },
+
+  { code: 'bgRed.brightRed',              r: 204, g: 28,  b: 43,  char: '▒', background: '#c50f1f', foreground: '#e74856', },
+  { code: 'bgRed.brightGreen',            r: 163, g: 58,  b: 27,  char: '▒', background: '#c50f1f', foreground: '#16c60c', },
+  { code: 'bgRed.brightYellow',           r: 208, g: 68,  b: 62,  char: '▒', background: '#c50f1f', foreground: '#f9f1a5', },
+  { code: 'bgRed.brightBlue',             r: 169, g: 39,  b: 83,  char: '▒', background: '#c50f1f', foreground: '#3b78ff', },
+  { code: 'bgRed.brightMagenta',          r: 193, g: 13,  b: 60,  char: '▒', background: '#c50f1f', foreground: '#b4009e', },
+  { code: 'bgRed.brightCyan',             r: 176, g: 62,  b: 73,  char: '▒', background: '#c50f1f', foreground: '#61d6d6', },
+  { code: 'bgRed.brightWhite',            r: 207, g: 68,  b: 80,  char: '▒', background: '#c50f1f', foreground: '#f2f2f2', },
+
+  { code: 'bgGreen.black',                r: 17,  g: 129, b: 14,  char: '▒', background: '#13a10e', foreground: '#000000', },
+  { code: 'bgGreen.red',                  r: 60,  g: 133, b: 18,  char: '▒', background: '#13a10e', foreground: '#c50f1f', },
+  { code: 'bgGreen.yellow',               r: 59,  g: 160, b: 11,  char: '▒', background: '#13a10e', foreground: '#c19c00', },
+  { code: 'bgGreen.blue',                 r: 15,  g: 140, b: 62,  char: '▒', background: '#13a10e', foreground: '#0037da', },
+  { code: 'bgGreen.magenta',              r: 46,  g: 134, b: 46,  char: '▒', background: '#13a10e', foreground: '#881798', },
+  { code: 'bgGreen.cyan',                 r: 28,  g: 159, b: 63,  char: '▒', background: '#13a10e', foreground: '#3a96dd', },
+  { code: 'bgGreen.white',                r: 62,  g: 170, b: 59,  char: '▒', background: '#13a10e', foreground: '#cccccc', },
+  { code: 'bgGreen.grey',                 r: 42,  g: 152, b: 38,  char: '▒', background: '#13a10e', foreground: '#767676', },
+
+  { code: 'bgGreen.brightRed',            r: 68,  g: 143, b: 31,  char: '▒', background: '#13a10e', foreground: '#e74856', },
+  { code: 'bgGreen.brightYellow',         r: 72,  g: 178, b: 49,  char: '▒', background: '#13a10e', foreground: '#f9f1a5', },
+  { code: 'bgGreen.brightBlue',           r: 28,  g: 152, b: 71,  char: '▒', background: '#13a10e', foreground: '#3b78ff', },
+  { code: 'bgGreen.brightMagenta',        r: 56,  g: 131, b: 48,  char: '▒', background: '#13a10e', foreground: '#b4009e', },
+  { code: 'bgGreen.brightCyan',           r: 37,  g: 173, b: 61,  char: '▒', background: '#13a10e', foreground: '#61d6d6', },
+  { code: 'bgGreen.brightWhite',          r: 71,  g: 178, b: 68,  char: '▒', background: '#13a10e', foreground: '#f2f2f2', },
+
+  { code: 'bgYellow.black',               r: 158, g: 128, b: 3,   char: '▒', background: '#c19c00', foreground: '#000000', },
+  { code: 'bgYellow.red',                 r: 194, g: 125, b: 8,   char: '▒', background: '#c19c00', foreground: '#c50f1f', },
+  { code: 'bgYellow.green',               r: 155, g: 157, b: 4,   char: '▒', background: '#c19c00', foreground: '#13a10e', },
+  { code: 'bgYellow.blue',                r: 152, g: 133, b: 56,  char: '▒', background: '#c19c00', foreground: '#0037da', },
+  { code: 'bgYellow.magenta',             r: 180, g: 136, b: 39,  char: '▒', background: '#c19c00', foreground: '#881798', },
+  { code: 'bgYellow.cyan',                r: 162, g: 155, b: 57,  char: '▒', background: '#c19c00', foreground: '#3a96dd', },
+  { code: 'bgYellow.white',               r: 196, g: 168, b: 53,  char: '▒', background: '#c19c00', foreground: '#cccccc', },
+  { code: 'bgYellow.grey',                r: 174, g: 146, b: 33,  char: '▒', background: '#c19c00', foreground: '#767676', },
+
+  { code: 'bgYellow.brightRed',           r: 202, g: 137, b: 22,  char: '▒', background: '#c19c00', foreground: '#e74856', },
+  { code: 'bgYellow.brightGreen',         r: 155, g: 166, b: 3,   char: '▒', background: '#c19c00', foreground: '#16c60c', },
+  { code: 'bgYellow.brightYellow',        r: 207, g: 177, b: 43,  char: '▒', background: '#c19c00', foreground: '#f9f1a5', },
+  { code: 'bgYellow.brightBlue',          r: 161, g: 147, b: 70,  char: '▒', background: '#c19c00', foreground: '#3b78ff', },
+  { code: 'bgYellow.brightMagenta',       r: 190, g: 123, b: 41,  char: '▒', background: '#c19c00', foreground: '#b4009e', },
+  { code: 'bgYellow.brightCyan',          r: 171, g: 170, b: 55,  char: '▒', background: '#c19c00', foreground: '#61d6d6', },
+  { code: 'bgYellow.brightWhite',         r: 205, g: 177, b: 62,  char: '▒', background: '#c19c00', foreground: '#f2f2f2', },
+
+  { code: 'bgBlue.black',                 r: 3,   g: 47,  b: 179, char: '▒', background: '#0037da', foreground: '#000000', },
+  { code: 'bgBlue.red',                   r: 47,  g: 47,  b: 181, char: '▒', background: '#0037da', foreground: '#c50f1f', },
+  { code: 'bgBlue.green',                 r: 5,   g: 79,  b: 179, char: '▒', background: '#0037da', foreground: '#13a10e', },
+  { code: 'bgBlue.yellow',                r: 46,  g: 77,  b: 177, char: '▒', background: '#0037da', foreground: '#c19c00', },
+  { code: 'bgBlue.magenta',               r: 32,  g: 48,  b: 204, char: '▒', background: '#0037da', foreground: '#881798', },
+  { code: 'bgBlue.cyan',                  r: 14,  g: 76,  b: 219, char: '▒', background: '#0037da', foreground: '#3a96dd', },
+  { code: 'bgBlue.white',                 r: 49,  g: 89,  b: 215, char: '▒', background: '#0037da', foreground: '#cccccc', },
+  { code: 'bgBlue.grey',                  r: 28,  g: 69,  b: 197, char: '▒', background: '#0037da', foreground: '#767676', },
+
+  { code: 'bgBlue.brightRed',             r: 55,  g: 59,  b: 191, char: '▒', background: '#0037da', foreground: '#e74856', },
+  { code: 'bgBlue.brightGreen',           r: 5,   g: 87,  b: 179, char: '▒', background: '#0037da', foreground: '#16c60c', },
+  { code: 'bgBlue.brightYellow',          r: 59,  g: 97,  b: 207, char: '▒', background: '#0037da', foreground: '#f9f1a5', },
+  { code: 'bgBlue.brightBlue',            r: 14,  g: 69,  b: 226, char: '▒', background: '#0037da', foreground: '#3b78ff', },
+  { code: 'bgBlue.brightMagenta',         r: 43,  g: 44,  b: 206, char: '▒', background: '#0037da', foreground: '#b4009e', },
+  { code: 'bgBlue.brightCyan',            r: 23,  g: 91,  b: 217, char: '▒', background: '#0037da', foreground: '#61d6d6', },
+  { code: 'bgBlue.brightWhite',           r: 57,  g: 97,  b: 223, char: '▒', background: '#0037da', foreground: '#f2f2f2', },
+
+  { code: 'bgMagenta.black',              r: 112, g: 21,  b: 125, char: '▒', background: '#881798', foreground: '#000000', },
+  { code: 'bgMagenta.red',                r: 149, g: 22,  b: 128, char: '▒', background: '#881798', foreground: '#c50f1f', },
+  { code: 'bgMagenta.green',              r: 113, g: 55,  b: 125, char: '▒', background: '#881798', foreground: '#13a10e', },
+  { code: 'bgMagenta.yellow',             r: 149, g: 53,  b: 124, char: '▒', background: '#881798', foreground: '#c19c00', },
+  { code: 'bgMagenta.blue',               r: 110, g: 30,  b: 166, char: '▒', background: '#881798', foreground: '#0037da', },
+  { code: 'bgMagenta.cyan',               r: 120, g: 52,  b: 167, char: '▒', background: '#881798', foreground: '#3a96dd', },
+  { code: 'bgMagenta.white',              r: 151, g: 65,  b: 163, char: '▒', background: '#881798', foreground: '#cccccc', },
+  { code: 'bgMagenta.grey',               r: 132, g: 45,  b: 145, char: '▒', background: '#881798', foreground: '#767676', },
+
+  { code: 'bgMagenta.brightRed',          r: 157, g: 34,  b: 138, char: '▒', background: '#881798', foreground: '#e74856', },
+  { code: 'bgMagenta.brightGreen',        r: 113, g: 63,  b: 125, char: '▒', background: '#881798', foreground: '#16c60c', },
+  { code: 'bgMagenta.brightYellow',       r: 161, g: 73,  b: 155, char: '▒', background: '#881798', foreground: '#f9f1a5', },
+  { code: 'bgMagenta.brightBlue',         r: 120, g: 45,  b: 174, char: '▒', background: '#881798', foreground: '#3b78ff', },
+  { code: 'bgMagenta.brightMagenta',      r: 146, g: 19,  b: 154, char: '▒', background: '#881798', foreground: '#b4009e', },
+  { code: 'bgMagenta.brightCyan',         r: 128, g: 67,  b: 166, char: '▒', background: '#881798', foreground: '#61d6d6', },
+  { code: 'bgMagenta.brightWhite',        r: 159, g: 74,  b: 172, char: '▒', background: '#881798', foreground: '#f2f2f2', },
+
+  { code: 'bgCyan.black',                 r: 49,  g: 123, b: 181, char: '▒', background: '#3a96dd', foreground: '#000000', },
+  { code: 'bgCyan.red',                   r: 89,  g: 124, b: 184, char: '▒', background: '#3a96dd', foreground: '#c50f1f', },
+  { code: 'bgCyan.green',                 r: 50,  g: 152, b: 181, char: '▒', background: '#3a96dd', foreground: '#13a10e', },
+  { code: 'bgCyan.yellow',                r: 88,  g: 151, b: 180, char: '▒', background: '#3a96dd', foreground: '#c19c00', },
+  { code: 'bgCyan.blue',                  r: 47,  g: 131, b: 220, char: '▒', background: '#3a96dd', foreground: '#0037da', },
+  { code: 'bgCyan.magenta',               r: 75,  g: 125, b: 207, char: '▒', background: '#3a96dd', foreground: '#881798', },
+  { code: 'bgCyan.white',                 r: 91,  g: 162, b: 217, char: '▒', background: '#3a96dd', foreground: '#cccccc', },
+  { code: 'bgCyan.grey',                  r: 71,  g: 143, b: 200, char: '▒', background: '#3a96dd', foreground: '#767676', },
+
+  { code: 'bgCyan.brightRed',             r: 97,  g: 134, b: 194, char: '▒', background: '#3a96dd', foreground: '#e74856', },
+  { code: 'bgCyan.brightGreen',           r: 50,  g: 161, b: 181, char: '▒', background: '#3a96dd', foreground: '#16c60c', },
+  { code: 'bgCyan.brightYellow',          r: 101, g: 170, b: 209, char: '▒', background: '#3a96dd', foreground: '#f9f1a5', },
+  { code: 'bgCyan.brightBlue',            r: 58,  g: 144, b: 228, char: '▒', background: '#3a96dd', foreground: '#3b78ff', },
+  { code: 'bgCyan.brightMagenta',         r: 85,  g: 122, b: 208, char: '▒', background: '#3a96dd', foreground: '#b4009e', },
+  { code: 'bgCyan.brightCyan',            r: 67,  g: 164, b: 220, char: '▒', background: '#3a96dd', foreground: '#61d6d6', },
+  { code: 'bgCyan.brightWhite',           r: 99,  g: 170, b: 225, char: '▒', background: '#3a96dd', foreground: '#f2f2f2', },
+
+  { code: 'bgWhite.black',                r: 167, g: 167, b: 167, char: '▒', background: '#cccccc', foreground: '#000000', },
+  { code: 'bgWhite.red',                  r: 202, g: 168, b: 170, char: '▒', background: '#cccccc', foreground: '#c50f1f', },
+  { code: 'bgWhite.green',                r: 168, g: 195, b: 168, char: '▒', background: '#cccccc', foreground: '#13a10e', },
+  { code: 'bgWhite.yellow',               r: 202, g: 194, b: 166, char: '▒', background: '#cccccc', foreground: '#c19c00', },
+  { code: 'bgWhite.blue',                 r: 166, g: 174, b: 207, char: '▒', background: '#cccccc', foreground: '#0037da', },
+  { code: 'bgWhite.magenta',              r: 190, g: 169, b: 193, char: '▒', background: '#cccccc', foreground: '#881798', },
+  { code: 'bgWhite.cyan',                 r: 174, g: 193, b: 208, char: '▒', background: '#cccccc', foreground: '#3a96dd', },
+  { code: 'bgWhite.grey',                 r: 186, g: 186, b: 186, char: '▒', background: '#cccccc', foreground: '#767676', },
+
+  { code: 'bgWhite.brightRed',            r: 210, g: 177, b: 180, char: '▒', background: '#cccccc', foreground: '#e74856', },
+  { code: 'bgWhite.brightGreen',          r: 168, g: 203, b: 167, char: '▒', background: '#cccccc', foreground: '#16c60c', },
+  { code: 'bgWhite.brightYellow',         r: 214, g: 212, b: 196, char: '▒', background: '#cccccc', foreground: '#f9f1a5', },
+  { code: 'bgWhite.brightBlue',           r: 175, g: 187, b: 215, char: '▒', background: '#cccccc', foreground: '#3b78ff', },
+  { code: 'bgWhite.brightMagenta',        r: 199, g: 166, b: 195, char: '▒', background: '#cccccc', foreground: '#b4009e', },
+  { code: 'bgWhite.brightCyan',           r: 182, g: 206, b: 206, char: '▒', background: '#cccccc', foreground: '#61d6d6', },
+  { code: 'bgWhite.brightWhite',          r: 212, g: 212, b: 212, char: '▒', background: '#cccccc', foreground: '#f2f2f2', },
+
+  { code: 'bgGrey.black',                 r: 97,  g: 97,  b: 98,  char: '▒', background: '#767676', foreground: '#000000', },
+  { code: 'bgGrey.red',                   r: 135, g: 98,  b: 100, char: '▒', background: '#767676', foreground: '#c50f1f', },
+  { code: 'bgGrey.green',                 r: 98,  g: 127, b: 98,  char: '▒', background: '#767676', foreground: '#13a10e', },
+  { code: 'bgGrey.yellow',                r: 134, g: 126, b: 96,  char: '▒', background: '#767676', foreground: '#c19c00', },
+  { code: 'bgGrey.blue',                  r: 96,  g: 105, b: 140, char: '▒', background: '#767676', foreground: '#0037da', },
+  { code: 'bgGrey.magenta',               r: 122, g: 99,  b: 125, char: '▒', background: '#767676', foreground: '#881798', },
+  { code: 'bgGrey.cyan',                  r: 106, g: 125, b: 141, char: '▒', background: '#767676', foreground: '#3a96dd', },
+  { code: 'bgGrey.white',                 r: 137, g: 137, b: 137, char: '▒', background: '#767676', foreground: '#cccccc', },
+
+  { code: 'bgGrey.brightRed',             r: 143, g: 109, b: 111, char: '▒', background: '#767676', foreground: '#e74856', },
+  { code: 'bgGrey.brightGreen',           r: 99,  g: 135, b: 98,  char: '▒', background: '#767676', foreground: '#16c60c', },
+  { code: 'bgGrey.brightYellow',          r: 147, g: 145, b: 128, char: '▒', background: '#767676', foreground: '#f9f1a5', },
+  { code: 'bgGrey.brightBlue',            r: 106, g: 118, b: 148, char: '▒', background: '#767676', foreground: '#3b78ff', },
+  { code: 'bgGrey.brightMagenta',         r: 132, g: 96,  b: 127, char: '▒', background: '#767676', foreground: '#b4009e', },
+  { code: 'bgGrey.brightCyan',            r: 114, g: 139, b: 139, char: '▒', background: '#767676', foreground: '#61d6d6', },
+  { code: 'bgGrey.brightWhite',           r: 145, g: 145, b: 145, char: '▒', background: '#767676', foreground: '#f2f2f2', },
+
+  { code: 'bgBrightRed.black',            r: 189, g: 60,  b: 71,  char: '▒', background: '#e74856', foreground: '#000000', },
+  { code: 'bgBrightRed.red',              r: 224, g: 61,  b: 75,  char: '▒', background: '#e74856', foreground: '#c50f1f', },
+  { code: 'bgBrightRed.green',            r: 190, g: 92,  b: 72,  char: '▒', background: '#e74856', foreground: '#13a10e', },
+  { code: 'bgBrightRed.yellow',           r: 223, g: 90,  b: 70,  char: '▒', background: '#e74856', foreground: '#c19c00', },
+  { code: 'bgBrightRed.blue',             r: 187, g: 68,  b: 115, char: '▒', background: '#e74856', foreground: '#0037da', },
+  { code: 'bgBrightRed.magenta',          r: 211, g: 62,  b: 100, char: '▒', background: '#e74856', foreground: '#881798', },
+  { code: 'bgBrightRed.cyan',             r: 196, g: 89,  b: 116, char: '▒', background: '#e74856', foreground: '#3a96dd', },
+  { code: 'bgBrightRed.white',            r: 225, g: 102, b: 112, char: '▒', background: '#e74856', foreground: '#cccccc', },
+  { code: 'bgBrightRed.grey',             r: 208, g: 82,  b: 93,  char: '▒', background: '#e74856', foreground: '#767676', },
+
+  { code: 'bgBrightYellow.black',         r: 198, g: 192, b: 133, char: '▒', background: '#f9f1a5', foreground: '#000000', },
+  { code: 'bgBrightYellow.red',           r: 237, g: 192, b: 136, char: '▒', background: '#f9f1a5', foreground: '#c50f1f', },
+  { code: 'bgBrightYellow.green',         r: 199, g: 222, b: 134, char: '▒', background: '#f9f1a5', foreground: '#13a10e', },
+  { code: 'bgBrightYellow.yellow',        r: 238, g: 223, b: 134, char: '▒', background: '#f9f1a5', foreground: '#c19c00', },
+  { code: 'bgBrightYellow.blue',          r: 196, g: 199, b: 177, char: '▒', background: '#f9f1a5', foreground: '#0037da', },
+  { code: 'bgBrightYellow.magenta',       r: 223, g: 193, b: 162, char: '▒', background: '#f9f1a5', foreground: '#881798', },
+  { code: 'bgBrightYellow.cyan',          r: 226, g: 220, b: 178, char: '▒', background: '#f9f1a5', foreground: '#3a96dd', },
+  { code: 'bgBrightYellow.white',         r: 238, g: 232, b: 174, char: '▒', background: '#f9f1a5', foreground: '#cccccc', },
+  { code: 'bgBrightYellow.grey',          r: 219, g: 212, b: 154, char: '▒', background: '#f9f1a5', foreground: '#767676', },
+
+  { code: 'bgBrightYellow.brightRed',     r: 245, g: 203, b: 147, char: '▒', background: '#f9f1a5', foreground: '#e74856', },
+  { code: 'bgBrightYellow.brightGreen',   r: 199, g: 231, b: 133, char: '▒', background: '#f9f1a5', foreground: '#16c60c', },
+  { code: 'bgBrightYellow.brightBlue',    r: 206, g: 213, b: 186, char: '▒', background: '#f9f1a5', foreground: '#3b78ff', },
+  { code: 'bgBrightYellow.brightMagenta', r: 233, g: 190, b: 164, char: '▒', background: '#f9f1a5', foreground: '#b4009e', },
+  { code: 'bgBrightYellow.brightCyan',    r: 214, g: 235, b: 176, char: '▒', background: '#f9f1a5', foreground: '#61d6d6', },
+  { code: 'bgBrightYellow.brightWhite',   r: 247, g: 241, b: 183, char: '▒', background: '#f9f1a5', foreground: '#f2f2f2', },
+
+  { code: 'bgBrightGreen.black',          r: 20,  g: 162, b: 12,  char: '▒', background: '#16c60c', foreground: '#000000', },
+  { code: 'bgBrightGreen.red',            r: 62,  g: 163, b: 16,  char: '▒', background: '#16c60c', foreground: '#c50f1f', },
+  { code: 'bgBrightGreen.green',          r: 21,  g: 190, b: 13,  char: '▒', background: '#16c60c', foreground: '#13a10e', },
+  { code: 'bgBrightGreen.yellow',         r: 61,  g: 189, b: 10,  char: '▒', background: '#16c60c', foreground: '#c19c00', },
+  { code: 'bgBrightGreen.blue',           r: 18,  g: 169, b: 60,  char: '▒', background: '#16c60c', foreground: '#0037da', },
+  { code: 'bgBrightGreen.magenta',        r: 48,  g: 164, b: 45,  char: '▒', background: '#16c60c', foreground: '#881798', },
+  { code: 'bgBrightGreen.cyan',           r: 30,  g: 188, b: 61,  char: '▒', background: '#16c60c', foreground: '#3a96dd', },
+  { code: 'bgBrightGreen.white',          r: 64,  g: 199, b: 57,  char: '▒', background: '#16c60c', foreground: '#cccccc', },
+  { code: 'bgBrightGreen.grey',           r: 44,  g: 181, b: 37,  char: '▒', background: '#16c60c', foreground: '#767676', },
+];
+
+const processImage = () => {
+  const theCanvas = document.createElement('canvas');
+  const theContext = theCanvas.getContext('2d');
+
+  let newWidth = document.getElementById('selectedwidth').value;
+  let newHeight = newWidth * theImg.height / theImg.width;
+
+  theContext.clearRect(0, 0, theImg.width, theImg.height);
+  theContext.drawImage(theImg, 0, 0, theImg.width, theImg.height, 0, 0, newWidth, newHeight);
+
+  let previewInBrowser = '';
+  let ansiArt = '';
+  let initialConsoleLog = 'console.log(';
+  let plus = '';
+  const steps = 1;
+  // Start the first row of "pixels".
+  // previewInBrowser += '<div class="a-row-of-pixels">';
+
+  for (let y = 0; y < newHeight; y += steps / (9 / 16)) {
+    for (let x = 0; x < newWidth; x += steps) {
+      const theImageData = theContext.getImageData(x, y, 1, 1);
+      const theRGBvalues = theImageData.data;
+
+      // Concatenate every column of "pixels" in this row, one after the other.
+      // const average = (theRGBvalues[0] + theRGBvalues[1] + theRGBvalues[2]) / 3;
+      // if (average < 85 * 1) ansiArt += '░';
+      // if (average > 85 * 1 && average < 85 * 2) ansiArt += '▒';
+      // if (average > 85 * 2) ansiArt += '▓';
+      let lowerDistance = 9999999;
+      let colorCode = '';
+      let colorChar = '';
+      let colorsMatch = [];
+      let background = '';
+      let foreground = '';
+      terminalColors.forEach((_eachColor) => {
+        const distanceToColor = Math.sqrt(
+          Math.pow(Math.abs(theRGBvalues[0] - _eachColor.r), 2) +
+          Math.pow(Math.abs(theRGBvalues[1] - _eachColor.g), 2) +
+          Math.pow(Math.abs(theRGBvalues[2] - _eachColor.b), 2)
+        );
+        if (distanceToColor < lowerDistance) {
+          lowerDistance = distanceToColor;
+          colorCode = _eachColor.code;
+          colorChar = _eachColor.char;
+          colorsMatch = [_eachColor.r, _eachColor.g, _eachColor.b];
+          background = _eachColor.background;
+          foreground = _eachColor.foreground;
+        }
+      });
+      ansiArt += `${ initialConsoleLog }${ plus }'${ colorChar }'.${ colorCode }`;
+      initialConsoleLog = '';
+      plus = '+';
+
+      // previewInBrowser += `<div class="a-pixel" style="background: rgb(${ theRGBvalues[0] }, ${ theRGBvalues[1] }, ${ theRGBvalues[2] })"></div>`;
+      previewInBrowser += '<span style="background: ' + background + ';color: ' + foreground + '">' + colorChar + '</span>';
+      // previewInBrowser += `<div class="a-pixel" style="background: rgb(${ colorsMatch[0] }, ${ colorsMatch[1] }, ${ colorsMatch[2] })"></div>`;
+    }
+    // Concatenate the end of the row and the beginning of a new one.
+    // previewInBrowser += '</div><div class="a-row-of-pixels">';
+    previewInBrowser += '\n';
+    ansiArt += ');\n';
+    initialConsoleLog = 'console.log(';
+    plus = '';
+  }
+  // The last row will be empty but who cares, let's close it.
+  // previewInBrowser += '</div>';
+  document.getElementById('preview').innerHTML = previewInBrowser;
+  document.getElementById('pre').value = 'const colors = require(\'colors\');\n\n' + ansiArt + '\n';
+};
+
+document.getElementById('selectedwidth').addEventListener('change', (_event) => {
+  processImage();
+});
+
+let theImg = new Image();
+document.getElementById('fileinput').addEventListener('change', (_event) => {
+  if (!document.getElementById('fileinput').files || !document.getElementById('fileinput').files[0]) return;
+  const FR = new FileReader();
+  FR.addEventListener('load', (_evtLoadFR) => {
+    theImg = new Image();
+    theImg.addEventListener('load', () => {
+      processImage();
+    });
+    theImg.src = _evtLoadFR.target.result;
+  });
+  FR.readAsDataURL(document.getElementById('fileinput').files[0]);
+});
+</script>
+</body>
+</html>
